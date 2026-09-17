@@ -3,6 +3,7 @@ from pathlib import Path
 
 from app.inference.base import InferenceClient
 from app.repositories.job_repository import JobRepository
+from app.services.executor import InferenceExecutor
 from app.services.pipeline import RESULT_SENTINEL, producer, worker, writer
 
 
@@ -15,13 +16,20 @@ class JobCoordinator:
         work_queue_size: int,
         result_queue_size: int,
         writer_batch_size: int,
+        global_concurrency: int,
+        max_attempts: int,
     ) -> None:
         self.repository = repository
-        self.client = client
         self.worker_count = worker_count
         self.work_queue_size = work_queue_size
         self.result_queue_size = result_queue_size
         self.writer_batch_size = writer_batch_size
+
+        self.executor = InferenceExecutor(
+            client=client,
+            concurrency=global_concurrency,
+            max_attempts=max_attempts,
+        )
 
     async def run(self, job_id: str, input_path: Path) -> None:
         work_queue = asyncio.Queue(maxsize=self.work_queue_size)
@@ -41,7 +49,7 @@ class JobCoordinator:
         )
 
         worker_tasks = [
-            asyncio.create_task(worker(self.client, work_queue, result_queue))
+            asyncio.create_task(worker(self.executor, work_queue, result_queue))
             for _ in range(self.worker_count)
         ]
 

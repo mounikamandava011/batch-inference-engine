@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from app.api.routes_jobs import router as jobs_router
 from app.api.routes_ops import router as ops_router
 from app.core.config import Settings
+from app.inference.digitalocean import DigitalOceanInferenceClient
 from app.inference.fake import FakeInferenceClient
 from app.repositories.db import Database
 from app.repositories.job_repository import JobRepository
@@ -24,7 +25,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         assert database.connection is not None
 
         repository = JobRepository(database.connection)
-        client = FakeInferenceClient()
+
+        real_client = None
+
+        if settings.inference_provider == "digitalocean":
+            real_client = DigitalOceanInferenceClient(
+                base_url=settings.inference_base_url,
+                api_key=settings.inference_api_key,
+                model=settings.inference_model,
+            )
+            client = real_client
+        else:
+            client = FakeInferenceClient()
 
         app.state.settings = settings
         app.state.database = database
@@ -38,6 +50,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             work_queue_size=settings.work_queue_size,
             result_queue_size=settings.result_queue_size,
             writer_batch_size=settings.writer_batch_size,
+            global_concurrency=settings.global_inference_concurrency,
+            max_attempts=settings.max_attempts,
         )
 
         try:
@@ -50,6 +64,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
             if tasks:
                 await asyncio.gather(*tasks, return_exceptions=True)
+
+            if real_client is not None:
+                await real_client.close()
 
             await database.close()
 

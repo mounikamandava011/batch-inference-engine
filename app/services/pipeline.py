@@ -1,5 +1,4 @@
 import asyncio
-import time
 from collections.abc import Iterator
 from itertools import islice
 from pathlib import Path
@@ -8,7 +7,6 @@ from typing import Any
 import ijson
 
 from app.domain.models import ItemResult, ItemStatus, WorkItem
-from app.inference.base import InferenceClient
 from app.repositories.job_repository import JobRepository
 
 WORK_SENTINEL = object()
@@ -79,7 +77,7 @@ async def producer(
 
 
 async def worker(
-    client: InferenceClient,
+    executor,
     work_queue: asyncio.Queue,
     result_queue: asyncio.Queue,
 ) -> None:
@@ -92,33 +90,7 @@ async def worker(
 
             assert isinstance(item, WorkItem)
 
-            started = time.perf_counter()
-
-            try:
-                response = await client.complete(item.prompt)
-
-                result = ItemResult(
-                    item_index=item.item_index,
-                    prompt=item.prompt,
-                    status=ItemStatus.SUCCEEDED,
-                    response=response,
-                    error_type=None,
-                    error_message=None,
-                    attempt_count=1,
-                    latency_ms=int((time.perf_counter() - started) * 1000),
-                )
-            except Exception as exc:  # noqa: BLE001 - isolate one provider/item failure
-                result = ItemResult(
-                    item_index=item.item_index,
-                    prompt=item.prompt,
-                    status=ItemStatus.FAILED,
-                    response=None,
-                    error_type="provider_error",
-                    error_message=str(exc)[:500],
-                    attempt_count=1,
-                    latency_ms=int((time.perf_counter() - started) * 1000),
-                )
-
+            result = await executor.execute(item)
             await result_queue.put(result)
 
         finally:
