@@ -1,0 +1,32 @@
+[
+  {
+    "item_index": 0,
+    "prompt": "Explain asynchronous systems briefly. #0",
+    "status": "succeeded",
+    "response": "**Asynchronous systems** operate without a shared global clock. Instead of coordinating all components on a fixed timing signal (like a CPU in a synchronous computer), different parts of an asynchronous system communicate and synchronize using **handshaking protocols**.\n\nHere is the brief breakdown:\n\n- **How they work:** When one component needs",
+    "error_type": null,
+    "error_message": null,
+    "attempt_count": 1,
+    "latency_ms": 2147
+  },
+  {
+    "item_index": 1,
+    "prompt": "Explain asynchronous systems briefly. #1",
+    "status": "succeeded",
+    "response": "Here is a brief explanation of asynchronous systems:\n\n**Asynchronous systems** operate without a global clock signal to coordinate actions. Instead, components communicate and synchronize using **handshaking signals** (e.g., \"request\" and \"acknowledge\").\n\n**Key characteristics:**\n- **No clock:** Events occur based",
+    "error_type": null,
+    "error_message": null,
+    "attempt_count": 1,
+    "latency_ms": 18119
+  },
+  {
+    "item_index": 2,
+    "prompt": "Explain asynchronous systems briefly. #2",
+    "status": "succeeded",
+    "response": "Here is a brief explanation of asynchronous systems, contrasted with the more common synchronous systems.\n\n**The Core Concept**\nAn **asynchronous system** is a type of digital circuit or computing system that does **not** use a global clock signal to coordinate its operations.\n\nInstead of waiting for a fixed clock tick, components in an",
+    "error_type": null,
+    "error_message": null,
+    "attempt_count": 1,
+    "latency_ms": 18118
+  }
+]

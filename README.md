@@ -1,5 +1,67 @@
 # Batch Inference Engine
 
+## Reviewer Quickstart
+
+From a fresh clone, the complete offline validation path is:
+
+```bash
+make setup
+make test
+make demo
+```
+
+`make demo` generates 1,000 prompts and exercises the full submit → background
+processing → persistence → status → ordered download path using the deterministic
+fake provider. It requires no API credentials and makes no billable calls.
+
+### Interactive API and Swagger
+
+```bash
+make sample COUNT=10
+make run
+```
+
+Then open:
+
+```text
+http://localhost:8000/docs
+```
+
+If the repository is running inside a Docker/VS Code development container,
+forward container port `8000` to the host before opening Swagger in the browser.
+
+### Real DigitalOcean smoke test
+
+Only the model-access key is required when using the repository defaults:
+
+```bash
+read -s -p "DigitalOcean model access key: " INFERENCE_API_KEY
+echo
+export INFERENCE_API_KEY
+
+make demo-real
+```
+
+The real demo defaults to three prompts, `deepseek-4-flash`, and 200 RPM
+request-start pacing. Results are saved to:
+
+```text
+data/output/real-demo-latest.json
+```
+
+A sanitized result from a successful live run is included at:
+
+```text
+docs/real-provider-smoke.json
+```
+
+When finished:
+
+```bash
+unset INFERENCE_API_KEY
+```
+
+
 Production-oriented asynchronous REST API for processing large prompt batches through an
 LLM inference provider.
 

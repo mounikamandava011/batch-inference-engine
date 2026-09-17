@@ -7,13 +7,17 @@ READY := $(VENV)/.batch-ready
 COUNT ?= 1000
 PORT ?= 8000
 DEMO_PORT ?= 8001
+
 REAL_PORT ?= 8002
 REAL_COUNT ?= 3
 RPM ?= 200
+REAL_BASE_URL ?= https://inference.do-ai.run/v1
+REAL_MODEL ?= deepseek-4-flash
+REAL_OUTPUT ?= data/output/real-demo-latest.json
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup test sample run run-real demo demo-real
+.PHONY: help setup test sample run demo demo-real run-real
 
 help:
 	@echo "Batch Inference Engine"
@@ -22,12 +26,12 @@ help:
 	@echo "  make test                      lint + format check + tests"
 	@echo "  make sample                    generate 1,000 prompts"
 	@echo "  make sample COUNT=10           generate custom prompt count"
-	@echo "  make run                       offline fake API on port 8000"
+	@echo "  make run                       offline fake API + Swagger"
 	@echo "  make run PORT=9000             fake API on another port"
-	@echo "  make demo                      full 1,000-item fake E2E demo"
-	@echo "  make demo COUNT=10             smaller fake E2E demo"
+	@echo "  make demo                      full 1,000-item offline E2E demo"
+	@echo "  make demo COUNT=10             smaller offline E2E demo"
 	@echo "  make demo-real                 real 3-item DigitalOcean demo"
-	@echo "  make demo-real REAL_COUNT=5    real 5-item DigitalOcean demo"
+	@echo "  make demo-real REAL_COUNT=5    real 5-item demo"
 	@echo "  make demo-real RPM=120         override real-provider pacing"
 	@echo "  make run-real                  real provider + Swagger (billable)"
 	@echo ""
@@ -75,22 +79,26 @@ demo: $(READY)
 	    --port $(DEMO_PORT)
 
 demo-real: $(READY)
+	@test -n "$$INFERENCE_API_KEY" || \
+	    (echo "ERROR: INFERENCE_API_KEY is required"; exit 1)
 	@echo "REAL PROVIDER DEMO — billable"
+	INFERENCE_BASE_URL="$${INFERENCE_BASE_URL:-$(REAL_BASE_URL)}" \
+	INFERENCE_MODEL="$${INFERENCE_MODEL:-$(REAL_MODEL)}" \
 	$(PY) scripts/e2e_demo.py \
 	    --provider digitalocean \
 	    --count $(REAL_COUNT) \
 	    --port $(REAL_PORT) \
-	    --rpm $(RPM)
+	    --rpm $(RPM) \
+	    --output $(REAL_OUTPUT)
 
 run-real: $(READY)
 	@test -n "$$INFERENCE_API_KEY" || \
 	    (echo "ERROR: INFERENCE_API_KEY is required"; exit 1)
-	@test -n "$$INFERENCE_BASE_URL" || \
-	    (echo "ERROR: INFERENCE_BASE_URL is required"; exit 1)
-	@test -n "$$INFERENCE_MODEL" || \
-	    (echo "ERROR: INFERENCE_MODEL is required"; exit 1)
 	@echo "REAL PROVIDER — billable"
 	@echo "Swagger: http://localhost:$(PORT)/docs"
+	@echo "Model:   $${INFERENCE_MODEL:-$(REAL_MODEL)}"
+	INFERENCE_BASE_URL="$${INFERENCE_BASE_URL:-$(REAL_BASE_URL)}" \
+	INFERENCE_MODEL="$${INFERENCE_MODEL:-$(REAL_MODEL)}" \
 	INFERENCE_PROVIDER=digitalocean \
 	REQUESTS_PER_MINUTE=$(RPM) \
 	$(PY) -m uvicorn app.main:app \
