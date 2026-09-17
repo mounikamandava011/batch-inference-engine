@@ -7,6 +7,41 @@ The service accepts a local JSON batch, returns a job ID immediately, processes 
 through a bounded asynchronous worker pipeline, persists every result to SQLite, exposes
 live job progress, and streams the final ordered result array.
 
+## Reviewer commands
+
+The common reviewer workflows are available through `make`:
+
+```bash
+make setup
+make test
+make demo
+```
+
+Additional commands:
+
+```bash
+make sample
+make sample COUNT=10
+make run
+make demo COUNT=10
+make demo-real
+make run-real
+```
+
+`make run` and `make demo` always force the deterministic fake provider and
+disable provider request pacing, even if the caller's shell contains real
+inference credentials.
+
+`make demo-real` and `make run-real` are the explicit billable paths. They use
+DigitalOcean credentials from the environment and default to 200 request starts
+per minute; override with `RPM=<value>` if required.
+
+After `make run`, FastAPI Swagger UI is available at:
+
+```text
+http://localhost:8000/docs
+```
+
 ## Quickstart
 
 Requirements:
