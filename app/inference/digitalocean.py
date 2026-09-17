@@ -21,7 +21,7 @@ class DigitalOceanInferenceClient:
 
         self.model = model
         self.client = httpx.AsyncClient(
-            base_url=base_url.rstrip("/"),
+            base_url=base_url.rstrip("/") + "/",
             headers={"Authorization": f"Bearer {api_key}"},
             timeout=httpx.Timeout(60.0, connect=10.0),
         )
@@ -48,7 +48,7 @@ class DigitalOceanInferenceClient:
     async def complete(self, prompt: str) -> str:
         try:
             response = await self.client.post(
-                "/chat/completions",
+                "chat/completions",
                 json={
                     "model": self.model,
                     "messages": [

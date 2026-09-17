@@ -4,6 +4,7 @@ import time
 
 from app.domain.models import ItemResult, ItemStatus, WorkItem
 from app.inference.base import InferenceClient, InferenceError
+from app.services.rate_limit import RequestPacer
 
 
 class InferenceExecutor:
@@ -12,12 +13,14 @@ class InferenceExecutor:
         client: InferenceClient,
         concurrency: int,
         max_attempts: int,
+        requests_per_minute: float = 0,
         base_delay: float = 0.25,
         max_delay: float = 8.0,
     ) -> None:
         self.client = client
         self.semaphore = asyncio.Semaphore(concurrency)
         self.max_attempts = max_attempts
+        self.pacer = RequestPacer(requests_per_minute)
         self.base_delay = base_delay
         self.max_delay = max_delay
 
@@ -26,6 +29,8 @@ class InferenceExecutor:
 
         for attempt in range(1, self.max_attempts + 1):
             try:
+                await self.pacer.wait()
+
                 async with self.semaphore:
                     response = await self.client.complete(item.prompt)
 

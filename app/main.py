@@ -51,6 +51,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             result_queue_size=settings.result_queue_size,
             writer_batch_size=settings.writer_batch_size,
             global_concurrency=settings.global_inference_concurrency,
+            requests_per_minute=settings.requests_per_minute,
             max_attempts=settings.max_attempts,
         )
 

@@ -10,6 +10,7 @@ def settings(tmp_path: Path) -> Settings:
     return Settings(
         input_root=tmp_path / "input",
         database_path=tmp_path / "jobs.sqlite3",
+        requests_per_minute=0,
     )
 
 

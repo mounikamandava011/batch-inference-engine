@@ -17,6 +17,7 @@ class JobCoordinator:
         result_queue_size: int,
         writer_batch_size: int,
         global_concurrency: int,
+        requests_per_minute: float,
         max_attempts: int,
     ) -> None:
         self.repository = repository
@@ -28,6 +29,7 @@ class JobCoordinator:
         self.executor = InferenceExecutor(
             client=client,
             concurrency=global_concurrency,
+            requests_per_minute=requests_per_minute,
             max_attempts=max_attempts,
         )
 
@@ -65,8 +67,10 @@ class JobCoordinator:
         all_tasks = [producer_task, *worker_tasks, writer_task]
 
         try:
-            await producer_task
-            await asyncio.gather(*worker_tasks)
+            await asyncio.gather(
+                producer_task,
+                *worker_tasks,
+            )
 
             await result_queue.put(RESULT_SENTINEL)
             await writer_task
