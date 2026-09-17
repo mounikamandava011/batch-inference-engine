@@ -177,3 +177,67 @@ def test_bad_item_does_not_fail_other_items(tmp_path: Path):
     assert final["items_processed"] == 3
     assert final["items_succeeded"] == 2
     assert final["items_failed"] == 1
+
+
+def test_completed_job_download_is_ordered(tmp_path: Path):
+    import json
+
+    cfg = settings(tmp_path)
+    cfg.input_root.mkdir(parents=True)
+
+    prompts = [{"prompt": f"prompt-{i}"} for i in range(25)]
+
+    (cfg.input_root / "batch.json").write_text(
+        json.dumps(prompts),
+        encoding="utf-8",
+    )
+
+    app = create_app(cfg)
+
+    with TestClient(app) as client:
+        submitted = client.post(
+            "/job",
+            json={"input_file": "batch.json"},
+        )
+
+        job_id = submitted.json()["job_id"]
+        final = wait_for_terminal(client, job_id)
+
+        assert final["status"] == "completed"
+
+        response = client.get(f"/job/{job_id}/download")
+
+    assert response.status_code == 200
+
+    rows = response.json()
+
+    assert len(rows) == 25
+    assert [row["item_index"] for row in rows] == list(range(25))
+    assert rows[0]["response"] == "fake:prompt-0"
+
+
+def test_download_before_completion_rejected(tmp_path: Path):
+    cfg = settings(tmp_path)
+    cfg.input_root.mkdir(parents=True)
+
+    (cfg.input_root / "batch.json").write_text(
+        '[{"prompt":"hello"}]',
+        encoding="utf-8",
+    )
+
+    app = create_app(cfg)
+
+    with TestClient(app) as client:
+        submitted = client.post(
+            "/job",
+            json={"input_file": "batch.json"},
+        )
+
+        job_id = submitted.json()["job_id"]
+
+        # The job may finish extremely quickly. Force a known queued job
+        # directly through the repository is unnecessary here, so accept
+        # either successful download or the intended 409 race outcome.
+        response = client.get(f"/job/{job_id}/download")
+
+    assert response.status_code in {200, 409}

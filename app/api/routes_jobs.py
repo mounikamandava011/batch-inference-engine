@@ -1,10 +1,13 @@
 import asyncio
+import json
 import uuid
 
 from fastapi import APIRouter, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
 
 from app.api.schemas import CreateJobRequest, CreateJobResponse, JobStatusResponse
 from app.core.paths import UnsafeInputPath, resolve_input_file
+from app.domain.models import JobStatus
 
 router = APIRouter(tags=["jobs"])
 
@@ -59,4 +62,56 @@ async def get_job_status(job_id: str, request: Request) -> JobStatusResponse:
         started_at=job.started_at,
         completed_at=job.completed_at,
         error_message=job.error_message,
+    )
+
+
+@router.get("/job/{job_id}/download")
+async def download_results(job_id: str, request: Request):
+    repo = repository(request)
+    job = await repo.get_job(job_id)
+
+    if job is None:
+        raise HTTPException(status_code=404, detail="job not found")
+
+    if job.status not in {
+        JobStatus.COMPLETED,
+        JobStatus.COMPLETED_WITH_ERRORS,
+    }:
+        raise HTTPException(
+            status_code=409,
+            detail="results are available only after job completion",
+        )
+
+    async def stream():
+        first = True
+        after_index = -1
+
+        yield "["
+
+        while True:
+            rows = await repo.get_result_page(
+                job_id,
+                after_index,
+                limit=500,
+            )
+
+            if not rows:
+                break
+
+            for row in rows:
+                if not first:
+                    yield ","
+
+                yield json.dumps(row, separators=(",", ":"))
+                first = False
+                after_index = row["item_index"]
+
+        yield "]"
+
+    return StreamingResponse(
+        stream(),
+        media_type="application/json",
+        headers={
+            "Content-Disposition": f'attachment; filename="{job_id}.json"',
+        },
     )

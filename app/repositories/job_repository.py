@@ -161,6 +161,34 @@ class JobRepository:
             )
             await self._db.commit()
 
+    async def get_result_page(
+        self,
+        job_id: str,
+        after_index: int,
+        limit: int = 500,
+    ) -> list[dict]:
+        async with self._db.execute(
+            """
+            SELECT
+                item_index,
+                prompt,
+                status,
+                response,
+                error_type,
+                error_message,
+                attempt_count,
+                latency_ms
+            FROM results
+            WHERE job_id = ? AND item_index > ?
+            ORDER BY item_index
+            LIMIT ?
+            """,
+            (job_id, after_index, limit),
+        ) as cursor:
+            rows = await cursor.fetchall()
+
+        return [dict(row) for row in rows]
+
     async def mark_failed(self, job_id: str, message: str) -> None:
         async with self._write_lock:
             await self._db.execute(
