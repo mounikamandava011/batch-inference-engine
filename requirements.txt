@@ -1,0 +1,6 @@
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+pydantic-settings>=2.6,<3
+aiosqlite>=0.20,<1
+ijson>=3.3,<4
+httpx>=0.28,<1
