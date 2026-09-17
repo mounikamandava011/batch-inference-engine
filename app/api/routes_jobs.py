@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 
 from fastapi import APIRouter, HTTPException, Request, status
@@ -21,12 +22,17 @@ async def create_job(payload: CreateJobRequest, request: Request) -> CreateJobRe
     settings = request.app.state.settings
 
     try:
-        resolve_input_file(settings.input_root, payload.input_file)
+        input_path = resolve_input_file(settings.input_root, payload.input_file)
     except (UnsafeInputPath, FileNotFoundError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     job_id = str(uuid.uuid4())
     job = await repository(request).create_job(job_id, payload.input_file)
+
+    task = asyncio.create_task(request.app.state.coordinator.run(job_id, input_path))
+
+    request.app.state.tasks.add(task)
+    task.add_done_callback(request.app.state.tasks.discard)
 
     return CreateJobResponse(job_id=job.id, status=job.status)
 
